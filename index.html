@@ -2303,34 +2303,32 @@
           </div>
         </div>
         <div class="filter-section">
-          <div class="filter-label">Department</div>
+          <div class="filter-label">Department · القسم</div>
           <select
             class="filter-select"
             id="f-dept"
-            onchange="
-              updateSpecFilter();
-              renderList();
-            "
+            onchange="updateSpecFilter(); updateSubFilter(); renderList();"
           >
             <option value="">All Departments</option>
-            <option>Dental</option>
-            <option>Internal Medicine</option>
-            <option>Surgery</option>
-            <option>Pediatrics</option>
-            <option>Radiology</option>
-            <option>Psychiatry</option>
-            <option>Family Medicine</option>
-            <option>Obstetrics and Gynecology</option>
           </select>
-          <div class="filter-label">Specialty</div>
-          <select class="filter-select" id="f-spec" onchange="renderList()">
+          <div class="filter-label">Specialty · التخصص</div>
+          <select class="filter-select" id="f-spec" onchange="updateSubFilter(); renderList();">
             <option value="">All Specialties</option>
           </select>
-          <div class="filter-label">Location</div>
+          <div class="filter-label">Subspecialty · التخصص الدقيق</div>
+          <select class="filter-select" id="f-sub" onchange="renderList()">
+            <option value="">All Subspecialties</option>
+          </select>
+          <div class="filter-label">Location · الموقع</div>
           <select class="filter-select" id="f-loc" onchange="renderList()">
             <option value="">All Locations</option>
-            <option value="Nuzha">Al-Nuzha · النزهة</option>
-            <option value="Suwaidi">Al-Suwaidi · السويدي</option>
+            <option value="nuzha_only">النزهة فقط · Nuzha only</option>
+            <option value="suwaidi_only">السويدي فقط · Suwaydi only</option>
+            <option value="both">النزهة / السويدي · Both</option>
+          </select>
+          <div class="filter-label" id="f-center-label" style="display:none">Medical Center · المركز الطبي</div>
+          <select class="filter-select" id="f-center" style="display:none" onchange="renderList()">
+            <option value="">All Centers</option>
           </select>
           <button class="filter-reset" onclick="resetFilters()">
             ✕ Reset filters
@@ -3433,8 +3431,8 @@
           email: "Dr.k.hundallah@gmail.com",
           sign_date: "01 Jan 2013",
           join_date: "01 Jan 2013",
-          start_date: "01 Jan 2025",
-          end_date: "31 Dec 2025",
+          start_date: "01 Jan 2026",
+          end_date: "31 Dec 2026",
           contract_type_en: "Part-Time",
           contract_type_ar: "دوام جزئي",
           contract_dur_en: "One year",
@@ -3722,7 +3720,7 @@
         },
         {
           id: "4933",
-          national_id: "1005855208",
+          national_id: "1055855208",
           name_en: "Abdullah Thabet Abdullah Al-Qahtani",
           name_ar: "عبدالله ثابت عبدالله القحطاني",
           nationality_en: "Saudi",
@@ -8510,11 +8508,11 @@
           age_en: "From 15 years of age",
           age_ar: "من عمر 15 سنة",
           mobile: "563999901",
-          email: "benazi11@yahoo.com benazi11@gmail.com",
+          email: "benazi11@gmail.com",
           sign_date: "03 Feb 2013",
           join_date: "03 Feb 2013",
           start_date: "03 Feb 2026",
-          end_date: "02 Feb 2027",
+          end_date: "03 Feb 2027",
           contract_type_en: "Part-Time",
           contract_type_ar: "دوام جزئي",
           contract_dur_en: "One year",
@@ -8576,8 +8574,8 @@
           email: "aysolayan@yahoo.com",
           sign_date: "31 Mar 2008",
           join_date: "31 Mar 2008",
-          start_date: "31 Mar 2025",
-          end_date: "30 Mar 2026",
+          start_date: "31 Mar 2026",
+          end_date: "30 Mar 2027",
           contract_type_en: "Part-Time",
           contract_type_ar: "دوام جزئي",
           contract_dur_en: "One year",
@@ -8890,8 +8888,8 @@
           email: "Nhamdi@kfshrc.edu.sa",
           sign_date: "21 Apr 2017",
           join_date: "21 Apr 2017",
-          start_date: "21 Apr 2025",
-          end_date: "20 Apr 2026",
+          start_date: "21 Apr 2026",
+          end_date: "20 Apr 2027",
           contract_type_en: "Part-Time",
           contract_type_ar: "دوام جزئي",
           contract_dur_en: "One year",
@@ -17006,7 +17004,7 @@
           center_name_ar: "مجمع العليا للخدمات الطبية",
           location_en: "Nuzha",
           location_ar: "النزهة",
-          mobile: "الجراحة",
+          mobile: "503282014",
           dept_en: "Surgery",
           dept_ar: "الجراحة",
           spec_en: "General Surgery",
@@ -17241,10 +17239,12 @@
         document.getElementById("search-inp").value = "";
         document.getElementById("f-dept").value = "";
         document.getElementById("f-spec").value = "";
+        document.getElementById("f-sub").value = "";
         document.getElementById("f-loc").value = "";
+        document.getElementById("f-center").value = "";
         incompleteOnly = false;
         document.getElementById("incomplete-track").classList.remove("on");
-        updateSpecFilter();
+        updateDeptFilter();
 
         renderList();
         document.getElementById("empty-state").style.display = "";
@@ -17252,23 +17252,56 @@
         updateTopStats();
       }
 
+      // ── Location normalization helper ──
+      function normalizeLoc(loc_en) {
+        if (!loc_en) return "";
+        const l = loc_en.toLowerCase().replace(/\s/g, "");
+        const hasN = l.includes("nuzha");
+        const hasS = l.includes("suwaidi") || l.includes("suwaydi");
+        if (hasN && hasS) return "both";
+        if (hasN) return "nuzha_only";
+        if (hasS) return "suwaidi_only";
+        return "";
+      }
+
+      // ── Dept key: use dept_en + dept_ar combined as unique identifier ──
+      function deptKey(d) {
+        return (d.dept_en || "") + "||" + (d.dept_ar || "");
+      }
+
       // ── Filters ──
+      function updateDeptFilter() {
+        const docs = DATA[currentCat] || [];
+        // Build unique dept entries: key = "dept_en||dept_ar"
+        const seen = new Map();
+        docs.forEach(d => {
+          const key = deptKey(d);
+          if (!seen.has(key)) {
+            seen.set(key, { en: d.dept_en || "", ar: d.dept_ar || "" });
+          }
+        });
+        // Sort: first by en, then ar
+        const entries = [...seen.values()]
+          .filter(e => e.en || e.ar)
+          .sort((a, b) => a.en.localeCompare(b.en) || a.ar.localeCompare(b.ar));
+
+        const sel = document.getElementById("f-dept");
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">All Departments</option>' +
+          entries.map(e => {
+            const val = e.en + "||" + e.ar;
+            const label = e.en + (e.ar && e.ar !== e.en ? " · " + e.ar : "");
+            return `<option value="${val}"${val === cur ? " selected" : ""}>${label}</option>`;
+          }).join("");
+      }
       function updateSpecFilter() {
         const docs = DATA[currentCat] || [];
-        const deptVal = (
-          document.getElementById("f-dept").value || ""
-        ).toLowerCase();
-        // Normalize dental: treat "dental" and "dentistry" as equivalent
-        const deptFilter = deptVal === "dental" ? "dent" : deptVal;
+        const deptVal = document.getElementById("f-dept").value || "";
         const specs = [
           ...new Set(
             docs
-              .filter(
-                (d) =>
-                  !deptFilter ||
-                  (d.dept_en || "").toLowerCase().includes(deptFilter),
-              )
-              .map((d) => d.spec_en || "")
+              .filter(d => !deptVal || deptKey(d) === deptVal)
+              .map(d => d.spec_en || "")
               .filter(Boolean),
           ),
         ].sort();
@@ -17276,17 +17309,63 @@
         const cur = sel.value;
         sel.innerHTML =
           '<option value="">All Specialties</option>' +
-          specs
-            .map((s) => `<option${s === cur ? " selected" : ""}>${s}</option>`)
-            .join("");
+          specs.map(s => `<option${s === cur ? " selected" : ""}>${s}</option>`).join("");
+        updateSubFilter();
+        updateCenterFilter();
       }
+
+      function updateSubFilter() {
+        const docs = DATA[currentCat] || [];
+        const deptVal = document.getElementById("f-dept").value || "";
+        const specVal = (document.getElementById("f-spec").value || "").toLowerCase();
+        const subs = [
+          ...new Set(
+            docs
+              .filter(d => {
+                if (deptVal && deptKey(d) !== deptVal) return false;
+                if (specVal && !(d.spec_en || "").toLowerCase().includes(specVal)) return false;
+                return true;
+              })
+              .map(d => d.sub_en || "")
+              .filter(s => s && s !== "-" && !s.match(/^[ـ\-]+$/)),
+          ),
+        ].sort();
+        const sel = document.getElementById("f-sub");
+        const cur = sel.value;
+        sel.innerHTML =
+          '<option value="">All Subspecialties</option>' +
+          subs.map(s => `<option${s === cur ? " selected" : ""}>${s}</option>`).join("");
+      }
+
+      function updateCenterFilter() {
+        const docs = DATA[currentCat] || [];
+        const centers = [...new Set(docs.map(d => d.center_name_en || "").filter(Boolean))].sort();
+        const label = document.getElementById("f-center-label");
+        const sel = document.getElementById("f-center");
+        if (centers.length > 0) {
+          label.style.display = "";
+          sel.style.display = "";
+          const cur = sel.value;
+          sel.innerHTML =
+            '<option value="">All Centers</option>' +
+            centers.map(c => `<option${c === cur ? " selected" : ""}>${c}</option>`).join("");
+        } else {
+          label.style.display = "none";
+          sel.style.display = "none";
+          sel.value = "";
+        }
+      }
+
       function resetFilters() {
         document.getElementById("search-inp").value = "";
         document.getElementById("f-dept").value = "";
         document.getElementById("f-spec").value = "";
+        document.getElementById("f-sub").value = "";
         document.getElementById("f-loc").value = "";
+        document.getElementById("f-center").value = "";
         incompleteOnly = false;
         document.getElementById("incomplete-track").classList.remove("on");
+        updateDeptFilter();
         renderList();
       }
       function toggleIncomplete() {
@@ -17344,15 +17423,13 @@
         const q = (document.getElementById("search-inp").value || "")
           .toLowerCase()
           .trim();
-        const dept = (
-          document.getElementById("f-dept").value || ""
-        ).toLowerCase();
+        const deptVal = document.getElementById("f-dept").value || "";
         const spec = (
           document.getElementById("f-spec").value || ""
         ).toLowerCase();
-        const loc = (
-          document.getElementById("f-loc").value || ""
-        ).toLowerCase();
+        const loc = document.getElementById("f-loc").value || "";
+        const sub = (document.getElementById("f-sub").value || "").toLowerCase();
+        const center = (document.getElementById("f-center").value || "").toLowerCase();
 
         filteredDocs = docs.filter((d) => {
           if (q) {
@@ -17362,22 +17439,29 @@
               (d.id || "") +
               (d.national_id || "") +
               (d.dept_en || "") +
-              (d.spec_en || "")
+              (d.dept_ar || "") +
+              (d.spec_en || "") +
+              (d.sub_en || "")
             ).toLowerCase();
             if (!hay.includes(q)) return false;
           }
-          if (dept) {
-            const deptEnNorm = (d.dept_en || "").toLowerCase();
-            // Normalize: treat "dental" and "dentistry" as equivalent
-            const deptFilter = dept === "dental" ? "dent" : dept;
-            if (!deptEnNorm.includes(deptFilter)) return false;
-          }
+          if (deptVal && deptKey(d) !== deptVal) return false;
           if (spec && !(d.spec_en || "").toLowerCase().includes(spec))
             return false;
+          if (sub && !(d.sub_en || "").toLowerCase().includes(sub))
+            return false;
           if (loc) {
-            const dloc = (d.location_en || "").toLowerCase();
-            if (!dloc.includes(loc)) return false;
+            const docLocNorm = normalizeLoc(d.location_en || "");
+            if (loc === "both") {
+              if (docLocNorm !== "both") return false;
+            } else if (loc === "nuzha_only") {
+              if (docLocNorm !== "nuzha_only") return false;
+            } else if (loc === "suwaidi_only") {
+              if (docLocNorm !== "suwaidi_only") return false;
+            }
           }
+          if (center && !(d.center_name_en || "").toLowerCase().includes(center))
+            return false;
           if (incompleteOnly && docProgress(currentCat, d).pct === 100)
             return false;
           return true;
